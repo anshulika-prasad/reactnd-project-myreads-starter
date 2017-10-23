@@ -1,8 +1,16 @@
 import React from 'react'
+import {Route} from 'react-router-dom'
 import * as BooksAPI from './BooksAPI'
 import './App.css'
+import SearchResultPage from './SearchResultPage'
+import AllBooksPage from './AllBooksPage'
 
 class BooksApp extends React.Component {
+	constructor(props) {
+	    super(props);
+	    // Manually bind this method to the component instance...
+	    this.fetchAllBooks = this.fetchAllBooks.bind(this);
+  	}
   state = {
     /**
      * TODO: Instead of using this state variable to keep track of which page
@@ -12,182 +20,91 @@ class BooksApp extends React.Component {
      */
     showSearchPage: false,
     allBooks: [],
-    curReading: [],
-    wantTRead:[],
-    alreadyRead:[]
+    searchResults:[],
+    searchLoading:false
   }
 
 
 	componentDidMount() {
-		console.log("ANSHULIKA componentDidMaount")
-		BooksAPI.getAll().then((allBooks) => {
-			// for (var key in allBooks[0]) {
-			// 	if (allBooks[0].hasOwnProperty(key)) {
-			// 		console.log(key);
-			// 	}
-			// }
-			// for (var key in allBooks[0].imageLinks) {
-			// 	if (allBooks[0].imageLinks.hasOwnProperty(key)) {
-			// 		console.log(key);
-			// 	}
-			// }
-				
-			// allBooks.map( (book) => 
-			// 	console.log("ANSHULIKA componentDidMaount allBooks " + book.id + " title : " + book.title + " authors : " + book.authors + " shelf: " + book.shelf )
-			// )
+		console.log("ANSHULIKA componentDidMount")
+		this.fetchAllBooks()
+  	}
 
-
+  	fetchAllBooks=()=>{
+  		console.log("ANSHULIKA fetchAllBooks called " )
+  		BooksAPI.getAll().then((allBooks) => {
 		  	this.setState({ allBooks })
-		  	// this.setState({ curReading })
-		  	// this.setState({ wantTRead })
-		  	// this.setState({ alreadyRead })
+		  
 		})
   	}
 
+	updateBook(book,shelf) {
+		
+		console.log("ANSHULIKA updateBook : "  + book.title + "  " + shelf)
+		BooksAPI.update(book,shelf).then(()=>{
+      		this.fetchAllBooks()
+    	})
+  	}
+
+	shouldShowSearchPage(showSearchPage) {
+		console.log("ANSHULIKA shouldShowSearchPage : " + showSearchPage)
+		// this.setState({
+		//     showSearchPage:showSearchPage
+		// })
+	}
+  	searchBooks=(query,maxResults)=>{
+	    this.setState({
+	      searchLoading:true
+	    })
+	    console.log("ANSHULIKA searchBooks : " + query + "  maxResults : "+ maxResults)
+	    BooksAPI.search(query,maxResults).then(results=>{
+
+		    if (results) {
+                if (results.error) {
+                    return;
+                }
+                this.setState({
+                    searchResults: results.map((bookResult) => {
+                        const myBook = this.state.allBooks.find((myBook) => (myBook.id === bookResult.id));
+                        if (myBook) {
+                            bookResult.shelf = myBook.shelf;
+                        }
+                        return bookResult;
+                    }),
+                    searchLoading: false
+                })
+            }
+        });
+  	}
   render() {
-  	let curReading = this.state.allBooks.filter(book => book.shelf === "currentlyReading")
-	let wantTRead = this.state.allBooks.filter(book => book.shelf === "wantToRead")
-	let alreadyRead = this.state.allBooks.filter(book => book.shelf === "read")
 
-	console.log("ANSHULIKA currentlyReading books")
-	curReading.map( (book) => 
-		console.log("ANSHULIKA  currentlyReading " + book.id + " title : " + book.title + " imageLinks : " + book.imageLinks.thumbnail + " shelf: " + book.shelf )
-	)
-
-	console.log("ANSHULIKA wantToRead books")
-	wantTRead.map( (book) => 
-		console.log("ANSHULIKA  wantToRead " + book.id + " title : " + book.title + " imageLinks : " + book.imageLinks.thumbnail + " shelf: " + book.shelf )
-	)
-
-	console.log("ANSHULIKA alreadyRead books")
-	alreadyRead.map( (book) => 
-		console.log("ANSHULIKA  alreadyRead " + book.id + " title : " + book.title + " imageLinks : " + book.imageLinks.thumbnail + " shelf: " + book.shelf )
-	)
 
     return (
       <div className="app">
-        {this.state.showSearchPage ? (
-          <div className="search-books">
-            <div className="search-books-bar">
-              <a className="close-search" onClick={() => this.setState({ showSearchPage: false })}>Close</a>
-              <div className="search-books-input-wrapper">
-                {/*
-                  NOTES: The search from BooksAPI is limited to a particular set of search terms.
-                  You can find these search terms here:
-                  https://github.com/udacity/reactnd-project-myreads-starter/blob/master/SEARCH_TERMS.md
-
-                  However, remember that the BooksAPI.search method DOES search by title or author. So, don't worry if
-                  you don't find a specific author or title. Every search is limited by search terms.
-                */}
-                <input type="text" placeholder="Search by title or author"/>
-
-              </div>
-            </div>
-            <div className="search-books-results">
-              <ol className="books-grid"></ol>
-            </div>
-          </div>
-        ) : (
-          <div className="list-books">
-            <div className="list-books-title">
-              <h1>MyReads</h1>
-            </div>
-            <div className="list-books-content">
-              <div>
-                <div className="bookshelf">
-                  <h2 className="bookshelf-title">Currently Reading</h2>
-                  <div className="bookshelf-books">
-                    <ol className="books-grid">
-
-						{curReading.map((book) => (
-			             <li key={book.id}>
-			                <div className="book">
-			                  <div className="book-top">
-			                    <div className="book-cover" style={{ width: 128, height: 193, backgroundImage: `url(${book.imageLinks.thumbnail})` }}></div>
-			                    <div className="book-shelf-changer">
-			                      <select>
-			                        <option value="none" disabled>Move to...</option>
-			                        <option value="currentlyReading">Currently Reading</option>
-			                        <option value="wantToRead">Want to Read</option>
-			                        <option value="read">Read</option>
-			                        <option value="none">None</option>
-			                      </select>
-			                    </div>
-			                  </div>
-			                  <div className="book-title">{book.title}</div>
-			                  <div className="book-authors">{book.authors}</div>
-			                </div>
-			              </li>
-			          ))}
-
-                    </ol>
-                  </div>
-                </div>
-                <div className="bookshelf">
-                  <h2 className="bookshelf-title">Want to Read</h2>
-                  <div className="bookshelf-books">
-                    <ol className="books-grid">
-
-                    {wantTRead.map((book) => (
-			             <li key={book.id}>
-			                <div className="book">
-			                  <div className="book-top">
-			                    <div className="book-cover" style={{ width: 128, height: 193, backgroundImage: `url(${book.imageLinks.thumbnail})` }}></div>
-			                    <div className="book-shelf-changer">
-			                      <select>
-			                        <option value="none" disabled>Move to...</option>
-			                        <option value="currentlyReading">Currently Reading</option>
-			                        <option value="wantToRead">Want to Read</option>
-			                        <option value="read">Read</option>
-			                        <option value="none">None</option>
-			                      </select>
-			                    </div>
-			                  </div>
-			                  <div className="book-title">{book.title}</div>
-			                  <div className="book-authors">{book.authors}</div>
-			                </div>
-			              </li>
-			          ))}
-
-                    </ol>
-                  </div>
-                </div>
-                <div className="bookshelf">
-                  <h2 className="bookshelf-title">Read</h2>
-                  <div className="bookshelf-books">
-                    <ol className="books-grid">
-
-	                    {alreadyRead.map((book) => (
-				             <li key={book.id}>
-				                <div className="book">
-				                  <div className="book-top">
-				                    <div className="book-cover" style={{ width: 128, height: 193, backgroundImage: `url(${book.imageLinks.thumbnail})` }}></div>
-				                    <div className="book-shelf-changer">
-				                      <select>
-				                        <option value="none" disabled>Move to...</option>
-				                        <option value="currentlyReading">Currently Reading</option>
-				                        <option value="wantToRead">Want to Read</option>
-				                        <option value="read">Read</option>
-				                        <option value="none">None</option>
-				                      </select>
-				                    </div>
-				                  </div>
-				                  <div className="book-title">{book.title}</div>
-				                  <div className="book-authors">{book.authors}</div>
-				                </div>
-				              </li>
-				          ))}
-				          
-                    </ol>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="open-search">
-              <a onClick={() => this.setState({ showSearchPage: true })}>Add a book</a>
-            </div>
-          </div>
-        )}
+ 
+		<Route
+			path='/search'
+			render={()=>(
+				<SearchResultPage
+					searchBooks={this.searchBooks}
+					searchLoading={this.state.searchLoading}
+					searchResults={this.state.searchResults}
+					updateBook={this.updateBook}
+					shouldShowSearchPage={this.shouldShowSearchPage}
+				/>
+			)}
+		/>
+   
+        <Route
+          exact path='/'
+          render={()=>(
+            <AllBooksPage
+        		allBooks={this.state.allBooks}
+            	updateBook={this.updateBook}
+        	/>
+          )}
+        />
+     
       </div>
     )
   }
