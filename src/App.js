@@ -26,55 +26,74 @@ class BooksApp extends React.Component {
 
 
 	componentDidMount() {
-		console.log("ANSHULIKA componentDidMount")
+		console.log("ANSHULIKA BooksApp componentDidMount")
 		this.fetchAllBooks()
   	}
 
   	fetchAllBooks=()=>{
-  		console.log("ANSHULIKA fetchAllBooks called " )
+  		console.log("ANSHULIKA BooksApp fetchAllBooks called " )
   		BooksAPI.getAll().then((allBooks) => {
-		  	this.setState({ allBooks })
+
+
+				let hashTable = {}
+				allBooks.forEach(function(book){
+					hashTable[book.id] = book.shelf
+				});
+				let updatedShelfForSearchedBooks = this.state.searchResults
+				updatedShelfForSearchedBooks.forEach(
+					(book) => book.shelf = hashTable[book.id]  || 'none'
+				)
+
+				this.setState({ 
+					allBooks:allBooks,
+					searchResults:updatedShelfForSearchedBooks
+				})
 		  
 		})
   	}
 
-	updateBook(book,shelf) {
+	updateBook=(book,shelf)=> {
 		
 		console.log("ANSHULIKA updateBook : "  + book.title + "  " + shelf)
 		BooksAPI.update(book,shelf).then(()=>{
       		this.fetchAllBooks()
     	})
-  	}
-
-	shouldShowSearchPage(showSearchPage) {
-		console.log("ANSHULIKA shouldShowSearchPage : " + showSearchPage)
-		// this.setState({
-		//     showSearchPage:showSearchPage
-		// })
-	}
+		}
+		setSearchResultsEmpty=()=>{
+			this.setState({
+				searchLoading:true,
+				searchResults: []
+	    })
+		}
   	searchBooks=(query,maxResults)=>{
 	    this.setState({
-	      searchLoading:true
+				searchLoading:true,
+				searchResults: []
 	    })
 	    console.log("ANSHULIKA searchBooks : " + query + "  maxResults : "+ maxResults)
 	    BooksAPI.search(query,maxResults).then(results=>{
 
 		    if (results) {
-                if (results.error) {
-                    return;
-                }
-                this.setState({
-                    searchResults: results.map((bookResult) => {
-                        const myBook = this.state.allBooks.find((myBook) => (myBook.id === bookResult.id));
-                        if (myBook) {
-                            bookResult.shelf = myBook.shelf;
-                        }
-                        return bookResult;
-                    }),
-                    searchLoading: false
-                })
-            }
-        });
+						if (results.error) {
+								return;
+						}
+						
+						let hashTable = {}
+						this.state.allBooks.forEach(function(book){
+							hashTable[book.id] = book.shelf
+						});
+						results.forEach(
+							(book) => book.shelf = hashTable[book.id]  || 'none'
+						)
+						// results.forEach(function(item){
+						// 	console.log("ANSHULIKA after search : " + item.title + " " + item.shelf)
+						// });
+						this.setState({
+								searchResults: results,
+								searchLoading: false
+						})
+        }
+      });
   	}
   render() {
 
@@ -90,7 +109,6 @@ class BooksApp extends React.Component {
 					searchLoading={this.state.searchLoading}
 					searchResults={this.state.searchResults}
 					updateBook={this.updateBook}
-					shouldShowSearchPage={this.shouldShowSearchPage}
 				/>
 			)}
 		/>
@@ -99,8 +117,9 @@ class BooksApp extends React.Component {
           exact path='/'
           render={()=>(
             <AllBooksPage
-        		allBooks={this.state.allBooks}
-            	updateBook={this.updateBook}
+        			allBooks={this.state.allBooks}
+							updateBook={this.updateBook}
+							setSearchResultsEmpty={this.setSearchResultsEmpty}
         	/>
           )}
         />
